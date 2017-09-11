@@ -71,6 +71,12 @@ AC_ARG_ENABLE(lz4,
 	[enable_lz4="yes"]
 )
 
+AC_ARG_ENABLE(rohc,
+	[  --disable-rohc          Disable ROHC compression support],
+	[enable_rohc="$enableval"],
+	[enable_rohc="yes"]
+)
+
 AC_ARG_ENABLE(comp-stub,
 	[  --enable-comp-stub      Don't compile compression support but still allow limited interoperability with compression-enabled peers],
 	[enable_comp_stub="$enableval"],
@@ -1121,6 +1127,43 @@ if test "$enable_lz4" = "yes" && test "$enable_comp_stub" = "no"; then
     CFLAGS="${saved_CFLAGS}"
 fi
 
+dnl
+dnl check for ROHC library
+dnl
+
+AC_ARG_VAR([ROHC_CFLAGS], [C compiler flags for rohc])
+AC_ARG_VAR([ROHC_LIBS], [linker flags for rohc])
+if test "$enable_rohc" = "yes" && test "$enable_comp_stub" = "no"; then
+    AC_CHECKING([for ROHC Library and Header files])
+    haverohclib=1
+
+    # if ROHC_LIBS is set, we assume it will work, otherwise test
+    if test -z "${ROHC_LIBS}"; then
+	AC_CHECK_LIB(rohc, rohc_compress,
+	    [ ROHC_LIBS="-lrohc" ],
+	    [
+	        AC_MSG_RESULT([ROHC library not found.])
+	        haverohclib=0
+	    ])
+    fi
+
+    saved_CFLAGS="${CFLAGS}"
+    CFLAGS="${CFLAGS} ${ROHC_CFLAGS}"
+    AC_CHECK_HEADERS(rohc.h,
+       ,
+       [
+	   AC_MSG_RESULT([ROHC headers not found.])
+	   haverohclib=0
+       ])
+    CFLAGS="${saved_CFLAGS}"
+
+    if test $haverohclib = 1 ; then
+	OPTIONAL_ROHC_CFLAGS="${ROHC_CFLAGS}"
+	OPTIONAL_ROHC_LIBS="${ROHC_LIBS}"
+	AC_DEFINE(ENABLE_ROHC, 1, [Enable ROHC compression library])
+    fi
+fi
+
 
 dnl
 dnl Check for systemd
@@ -1243,6 +1286,7 @@ fi
 if test "${enable_comp_stub}" = "yes"; then
 	test "${enable_lzo}" = "yes" && AC_MSG_ERROR([Cannot have both comp stub and lzo enabled (use --disable-lzo)])
 	test "${enable_lz4}" = "yes" && AC_MSG_ERROR([Cannot have both comp stub and LZ4 enabled (use --disable-lz4)])
+	test "${enable_rohc}" = "yes" && AC_MSG_ERROR([Cannot have both comp stub and ROHC enabled (use --disable-rohc)])
 	AC_DEFINE([ENABLE_COMP_STUB], [1], [Enable compression stub capability])
 fi
 
@@ -1317,6 +1361,8 @@ AC_SUBST([OPTIONAL_LZO_CFLAGS])
 AC_SUBST([OPTIONAL_LZO_LIBS])
 AC_SUBST([OPTIONAL_LZ4_CFLAGS])
 AC_SUBST([OPTIONAL_LZ4_LIBS])
+AC_SUBST([OPTIONAL_ROHC_CFLAGS])
+AC_SUBST([OPTIONAL_ROHC_LIBS])
 AC_SUBST([OPTIONAL_SYSTEMD_LIBS])
 AC_SUBST([OPTIONAL_PKCS11_HELPER_CFLAGS])
 AC_SUBST([OPTIONAL_PKCS11_HELPER_LIBS])

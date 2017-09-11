@@ -83,6 +83,9 @@ const char title_string[] =
 #ifdef ENABLE_LZ4
     " [LZ4]"
 #endif
+#ifdef ENABLE_ROHC
+    " [ROHC]"
+#endif
 #ifdef ENABLE_COMP_STUB
     " [COMP_STUB]"
 #endif
@@ -4134,11 +4137,17 @@ show_library_versions(const unsigned int flags)
 #else
 #define LZO_LIB_VER_STR "", ""
 #endif
+#ifdef ENABLE_ROHC
+#define ROHC_LIB_VER_STR ", ROHC ", rohc_version()
+#else
+#define ROHC_LIB_VER_STR "", ""
+#endif
 
-    msg(flags, "library versions: %s%s%s", SSL_LIB_VER_STR, LZO_LIB_VER_STR);
+    msg(flags, "library versions: %s%s%s%s", SSL_LIB_VER_STR, LZO_LIB_VER_STR, ROHC_LIB_VER_STR);
 
 #undef SSL_LIB_VER_STR
 #undef LZO_LIB_VER_STR
+#undef ROHC_LIB_VER_STR
 }
 
 static void
@@ -7413,6 +7422,13 @@ add_option(struct options *options,
             else if (streq(p[1], "lz4-v2"))
             {
                 options->comp.alg = COMP_ALGV2_LZ4;
+                options->comp.flags = 0;
+            }
+#endif
+#if defined(ENABLE_ROHC)
+            else if (streq(p[1], "rohc"))
+            {
+                options->comp.alg = COMP_ALG_ROHC;
                 options->comp.flags = 0;
             }
 #endif

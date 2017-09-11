@@ -23,7 +23,7 @@
 
 /*
  * Generic compression support.  Currently we support
- * LZO 2 and LZ4.
+ * LZO 2, LZ4 and ROHC.
  */
 #ifndef OPENVPN_COMP_H
 #define OPENVPN_COMP_H
@@ -41,6 +41,7 @@
 #define COMP_ALG_LZO    2 /* LZO algorithm */
 #define COMP_ALG_SNAPPY 3 /* Snappy algorithm (no longer supported) */
 #define COMP_ALG_LZ4    4 /* LZ4 algorithm */
+#define COMP_ALG_ROHC   5 /* ROHC */
 
 
 /* algorithm v2 */
@@ -126,6 +127,10 @@ struct compress_alg
 #include "comp-lz4.h"
 #endif
 
+#ifdef ENABLE_ROHC
+#include "comp-rohc.h"
+#endif
+
 /*
  * Information that basically identifies a compression
  * algorithm and related flags.
@@ -146,6 +151,9 @@ union compress_workspace_union
 #endif
 #ifdef ENABLE_LZ4
     struct lz4_workspace lz4;
+#endif
+#ifdef ENABLE_ROHC
+    struct rohc_workspace rohc;
 #endif
 };
 

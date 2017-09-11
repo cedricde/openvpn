@@ -76,6 +76,14 @@ comp_init(const struct compress_options *opt)
             compctx->alg = lz4v2_alg;
             break;
 #endif
+#ifdef ENABLE_ROHC
+        case COMP_ALG_ROHC:
+            ALLOC_OBJ_CLEAR(compctx, struct compress_context);
+            compctx->flags = opt->flags;
+            compctx->alg = rohc_alg;
+            break;
+
+#endif
     }
     if (compctx)
     {
@@ -161,6 +169,9 @@ comp_generate_peer_info_string(const struct compress_options *opt, struct buffer
 #if defined(ENABLE_LZO)
             buf_printf(out, "IV_LZO=1\n");
             lzo_avail = true;
+#endif
+#if defined(ENABLE_ROHC)
+            buf_printf(out, "IV_ROHC=1\n");
 #endif
         }
         if (!lzo_avail)

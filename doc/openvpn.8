@@ -2472,9 +2472,10 @@ Enable a compression algorithm.
 
 The
 .B algorithm
-parameter may be "lzo", "lz4", or empty.  LZO and LZ4
+parameter may be "lzo", "lz4", "rohc" or empty.  LZO and LZ4
 are different compression algorithms, with LZ4 generally
 offering the best performance with least CPU usage.
+ROHC tries to replace the packet headers with short identifiers.
 For backwards compatibility with OpenVPN versions before v2.4, use "lzo"
 (which is identical to the older option "\-\-comp\-lzo yes").
 
