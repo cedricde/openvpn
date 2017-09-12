@@ -691,8 +691,8 @@ socket_defined(const socket_descriptor_t sd)
 /*
  * Compression support
  */
-#if defined(ENABLE_LZO) || defined(ENABLE_LZ4) || defined(ENABLE_ROHC)    \
-    || defined(ENABLE_COMP_STUB)
+#if defined(ENABLE_LZO) || defined(ENABLE_LZ4)    \
+    || defined(ENABLE_COMP_STUB) || defined(ENABLE_ROHC)
 #define USE_COMP
 #endif
 
