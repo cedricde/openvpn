@@ -216,6 +216,9 @@
     <ClCompile Include="comp-lz4.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="comp-rohc.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="argv.c">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -252,6 +255,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="comp-lz4.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="comp-rohc.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="console.h">
