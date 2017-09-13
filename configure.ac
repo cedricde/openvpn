@@ -1149,7 +1149,7 @@ if test "$enable_rohc" = "yes" && test "$enable_comp_stub" = "no"; then
 
     saved_CFLAGS="${CFLAGS}"
     CFLAGS="${CFLAGS} ${ROHC_CFLAGS}"
-    AC_CHECK_HEADERS(rohc.h,
+    AC_CHECK_HEADERS(rohc/rohc.h,
        ,
        [
 	   AC_MSG_RESULT([ROHC headers not found.])
