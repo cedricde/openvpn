@@ -7426,10 +7426,15 @@ add_option(struct options *options,
             }
 #endif
 #if defined(ENABLE_ROHC)
-            else if (streq(p[1], "rohc"))
+            else if (streq(p[1], "rohc") || streq(p[1], "rohc-small-cid"))
             {
                 options->comp.alg = COMP_ALG_ROHC;
                 options->comp.flags = 0;
+            }
+            else if (streq(p[1], "rohc-large-cid"))
+            {
+                options->comp.alg = COMP_ALG_ROHC;
+                options->comp.flags = COMP_F_ROHC_MANY_STREAMS;
             }
 #endif
             else
