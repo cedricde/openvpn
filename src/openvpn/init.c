@@ -2902,7 +2902,7 @@ do_init_frame(struct context *c)
     {
         comp_add_to_extra_frame(&c->c2.frame);
 
-#if !defined(ENABLE_LZ4)
+#if !defined(ENABLE_LZ4) && !defined(ENABLE_ROHC)
         /*
          * Compression usage affects buffer alignment when non-swapped algs
          * such as LZO is used.
