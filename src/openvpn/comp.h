@@ -72,6 +72,7 @@
 /* Initial command byte to tell our peer if we compressed */
 #define LZO_COMPRESS_BYTE 0x66
 #define LZ4_COMPRESS_BYTE 0x69
+#define ROHC_COMPRESS_BYTE 0x70
 #define NO_COMPRESS_BYTE      0xFA
 #define NO_COMPRESS_BYTE_SWAP 0xFB /* to maintain payload alignment, replace this byte with last byte of packet */
 

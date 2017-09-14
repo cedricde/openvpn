@@ -7429,12 +7429,12 @@ add_option(struct options *options,
             else if (streq(p[1], "rohc") || streq(p[1], "rohc-small-cid"))
             {
                 options->comp.alg = COMP_ALG_ROHC;
-                options->comp.flags = 0;
+                options->comp.flags = COMP_F_SWAP;
             }
             else if (streq(p[1], "rohc-large-cid"))
             {
                 options->comp.alg = COMP_ALG_ROHC;
-                options->comp.flags = COMP_F_ROHC_MANY_STREAMS;
+                options->comp.flags = (COMP_F_SWAP|COMP_F_ROHC_MANY_STREAMS);
             }
 #endif
             else

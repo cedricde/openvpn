@@ -27,6 +27,8 @@
 
 #if defined(ENABLE_ROHC)
 
+#include <rohc/rohc.h>
+
 #include "buffer.h"
 
 /* ROHC specific compression flags */

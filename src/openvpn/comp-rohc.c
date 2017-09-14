@@ -75,8 +75,7 @@ rohc_compress_init(struct compress_context *compctx)
 
 
     /* prepare the compressor */
-    compctx->wu.rohc.compressor = rohc_comp_new2(cid_type, max_cid,
-                                                 rohc_random_cb, NULL);
+    compctx->wu.rohc.compressor = rohc_comp_new2(cid_type, max_cid, rohc_random_cb, NULL);
     if (compctx->wu.rohc.compressor == NULL)
     {
         msg(M_FATAL, "Cannot initialize ROHC compressor");
@@ -99,8 +98,7 @@ rohc_compress_init(struct compress_context *compctx)
 
 
     /* prepare the decompressor */
-    compctx->wu.rohc.decompressor = rohc_decomp_new2(cid_type, max_cid,
-                                                     ROHC_U_MODE);
+    compctx->wu.rohc.decompressor = rohc_decomp_new2(cid_type, max_cid, ROHC_U_MODE);
     if (compctx->wu.rohc.decompressor == NULL)
     {
         msg(M_FATAL, "Cannot initialize ROHC decompressor");
@@ -123,14 +121,18 @@ rohc_compress(struct buffer *buf,
               struct compress_context *compctx,
               const struct frame *frame)
 {
+    const size_t ps = PAYLOAD_SIZE(frame);
+    const size_t ps_max = ps + COMP_EXTRA_BUFFER(ps);
+
     if (buf->len <= 0)
     {
         return;
     }
 
     ASSERT(buf_init(&work, FRAME_HEADROOM(frame)));
+    ASSERT(buf_safe(&work, ps_max));
 
-    if (buf->len > PAYLOAD_SIZE(frame))
+    if (buf->len > ps)
     {
         dmsg(D_COMP_ERRORS, "ROHC compression buffer overflow");
         buf->len = 0;
@@ -139,36 +141,33 @@ rohc_compress(struct buffer *buf,
 
     {
         rohc_status_t rohc_status;
+        bool compressed;
 
         /* prepare buffers for ROHC */
-        struct rohc_buf uncomp_buf = rohc_buf_init_full(BPTR(buf),
-                                                        BLEN(buf),
-                                                        0);
-        struct rohc_buf comp_buf = rohc_buf_init_empty(BPTR(&work),
-                                                       BCAP(&work));
+        struct rohc_buf uncomp_buf = rohc_buf_init_full(BPTR(buf), BLEN(buf), 0);
+        struct rohc_buf comp_buf = rohc_buf_init_empty(BPTR(&work), ps_max);
 
         /* compress the packet */
-        rohc_status = rohc_compress4(compctx->wu.rohc.compressor,
-                                     uncomp_buf,
-                                     &comp_buf);
+        rohc_status = rohc_compress4(compctx->wu.rohc.compressor, uncomp_buf, &comp_buf);
         switch (rohc_status)
         {
         case ROHC_STATUS_OK:
+            compressed = true;
             break;
 
         case ROHC_STATUS_SEGMENT:
+            dmsg(D_COMP, "Skip multiple segments created by ROHC compression");
+            compressed = false;
+            break;
+
         case ROHC_STATUS_OUTPUT_TOO_SMALL:
             dmsg(D_COMP_ERRORS, "ROHC compression error: too large result");
-            break;
+            buf->len = 0;
+            return;
 
         case ROHC_STATUS_ERROR:
         default:
             dmsg(D_COMP_ERRORS, "ROHC compression error");
-            break;
-        }
-
-        if (rohc_status != ROHC_STATUS_OK)
-        {
             buf->len = 0;
             return;
         }
@@ -179,6 +178,18 @@ rohc_compress(struct buffer *buf,
         dmsg(D_COMP, "ROHC compress %d -> %d", buf->len, work.len);
         compctx->pre_compress += buf->len;
         compctx->post_compress += work.len;
+
+        /* store compression status */
+        {
+            uint8_t *head = BPTR(buf);
+            uint8_t *tail = BEND(buf);
+            ASSERT(buf_safe(buf, 1));
+            ++buf->len;
+
+            /* move head byte of payload to tail */
+            *tail = *head;
+            *head = (compressed ? ROHC_COMPRESS_BYTE : NO_COMPRESS_BYTE_SWAP);
+        }
     }
 }
 
@@ -189,6 +200,7 @@ rohc_decompress(struct buffer *buf,
                 const struct frame *frame)
 {
     const size_t max_decomp_size = EXPANDED_SIZE(frame);
+    uint8_t c;
 
     if (buf->len <= 0)
     {
@@ -196,24 +208,28 @@ rohc_decompress(struct buffer *buf,
     }
 
     ASSERT(buf_init(&work, FRAME_HEADROOM(frame)));
-    ASSERT(buf_safe(&work, max_decomp_size));
 
+    /* do unframing/swap (assumes buf->len > 0) */
+    {
+        uint8_t *head = BPTR(buf);
+        c = *head;
+        --buf->len;
+        *head = *BEND(buf);
+    }
+
+    if (c == ROHC_COMPRESS_BYTE) /* packet was compressed */
     {
         rohc_status_t rohc_status;
 
+        ASSERT(buf_safe(&work, max_decomp_size));
+
         /* prepare buffers for ROHC */
-        struct rohc_buf comp_buf = rohc_buf_init_full(BPTR(buf),
-                                                      BLEN(buf),
-                                                      0);
-        struct rohc_buf uncomp_buf = rohc_buf_init_empty(BPTR(&work),
-                                                         max_decomp_size);
+        struct rohc_buf comp_buf = rohc_buf_init_full(BPTR(buf), BLEN(buf), 0);
+        struct rohc_buf uncomp_buf = rohc_buf_init_empty(BPTR(&work), max_decomp_size);
 
         /* compress the packet */
         rohc_status = rohc_decompress3(compctx->wu.rohc.decompressor,
-                                       comp_buf,
-                                       &uncomp_buf,
-                                       NULL,
-                                       NULL);
+                                       comp_buf, &uncomp_buf, NULL, NULL);
         switch (rohc_status)
         {
         case ROHC_STATUS_OK:
@@ -256,6 +272,14 @@ rohc_decompress(struct buffer *buf,
         compctx->post_decompress += work.len;
 
         *buf = work;
+    }
+    else if (c == NO_COMPRESS_BYTE_SWAP) /* packet was not compressed */
+    {
+    }
+    else
+    {
+        dmsg(D_COMP_ERRORS, "Bad ROHC decompression header byte: %d", (int)c);
+        buf->len = 0;
     }
 }
 
