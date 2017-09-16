@@ -138,7 +138,7 @@ rohc_compress_init(struct compress_context *compctx)
     {
         if (!rohc_comp_enable_profile(compctx->wu.rohc.compressor, *profile))
         {
-            msg(M_WARN, "Cannot enable ROHC compress profile %s", rohc_get_profile_descr(*profile));
+            msg(D_COMP, "Cannot enable ROHC compress profile %s", rohc_get_profile_descr(*profile));
         }
         else
         {
@@ -169,7 +169,7 @@ rohc_compress_init(struct compress_context *compctx)
     {
         if (!rohc_decomp_enable_profile(compctx->wu.rohc.decompressor, *profile))
         {
-            msg(M_WARN, "Cannot enable ROHC decompress profile %s", rohc_get_profile_descr(*profile));
+            msg(D_COMP, "Cannot enable ROHC decompress profile %s", rohc_get_profile_descr(*profile));
         }
         else
         {
