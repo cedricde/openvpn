@@ -98,7 +98,7 @@ lzo_adaptive_compress_data(struct lzo_adaptive_compress *ac, int n_total, int n_
 }
 
 static void
-lzo_compress_init(struct compress_context *compctx)
+lzo_compress_init(struct compress_context *compctx, int tunnel_type)
 {
     msg(D_INIT_MEDIUM, "LZO compression initializing");
     ASSERT(!(compctx->flags & COMP_F_SWAP));

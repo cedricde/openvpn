@@ -38,7 +38,7 @@
 #include "memdbg.h"
 
 static void
-stub_compress_init(struct compress_context *compctx)
+stub_compress_init(struct compress_context *compctx, int tunnel_type)
 {
 }
 

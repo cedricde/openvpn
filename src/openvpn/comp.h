@@ -106,7 +106,7 @@ struct compress_context;
 struct compress_alg
 {
     const char *name;
-    void (*compress_init)(struct compress_context *compctx);
+    void (*compress_init)(struct compress_context *compctx, int tunnel_type);
     void (*compress_uninit)(struct compress_context *compctx);
     void (*compress)(struct buffer *buf, struct buffer work,
                      struct compress_context *compctx,
@@ -177,7 +177,7 @@ struct compress_context
 extern const struct compress_alg comp_stub_alg;
 extern const struct compress_alg compv2_stub_alg;
 
-struct compress_context *comp_init(const struct compress_options *opt);
+struct compress_context *comp_init(const struct compress_options *opt, int tunnel_type);
 
 void comp_uninit(struct compress_context *compctx);
 

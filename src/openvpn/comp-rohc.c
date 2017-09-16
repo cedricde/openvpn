@@ -36,6 +36,7 @@
 #include "error.h"
 #include "misc.h"
 #include "basic.h"
+#include "proto.h"
 
 #include "memdbg.h"
 
@@ -52,7 +53,7 @@ rohc_random_cb(const struct rohc_comp *const comp,
 }
 
 static void
-rohc_compress_init(struct compress_context *compctx)
+rohc_compress_init(struct compress_context *compctx, int tunnel_type)
 {
     rohc_cid_type_t cid_type;
     rohc_cid_t max_cid;
@@ -103,6 +104,9 @@ rohc_compress_init(struct compress_context *compctx)
     {
         msg(M_FATAL, "Cannot initialize ROHC decompressor");
     }
+
+    /* store type of tunnel */
+    compctx->wu.rohc.tunnel_type = tunnel_type;
 }
 
 static void
@@ -123,73 +127,92 @@ rohc_compress(struct buffer *buf,
 {
     const size_t ps = PAYLOAD_SIZE(frame);
     const size_t ps_max = ps + COMP_EXTRA_BUFFER(ps);
+    int iphdr_offset;
+    uint8_t head_byte = NO_COMPRESS_BYTE_SWAP;
 
-    if (buf->len <= 0)
+    if (BLEN(buf) <= 0)
     {
         return;
+    }
+    else if (BLEN(buf) > ps)
+    {
+        dmsg(D_COMP_ERRORS, "ROHC compression buffer overflow");
+        buf_reset_len(buf);
+        return;
+    }
+
+    /* check if the frame can be ROHC compressed */
+    switch (get_tun_ip_ver(compctx->wu.rohc.tunnel_type, buf, &iphdr_offset))
+    {
+        case 4:
+        case 6:
+            break;
+
+        default:
+            goto nocomp;
     }
 
     ASSERT(buf_init(&work, FRAME_HEADROOM(frame)));
     ASSERT(buf_safe(&work, ps_max));
 
-    if (buf->len > ps)
+    /* copy pre-IP data (i.e. Ethernet header) */
+    if (iphdr_offset > 0)
     {
-        dmsg(D_COMP_ERRORS, "ROHC compression buffer overflow");
-        buf->len = 0;
-        return;
+        ASSERT(buf_copy_n(&work, buf, iphdr_offset));
     }
 
     {
         rohc_status_t rohc_status;
-        bool compressed;
 
         /* prepare buffers for ROHC */
         struct rohc_buf uncomp_buf = rohc_buf_init_full(BPTR(buf), BLEN(buf), 0);
         struct rohc_buf comp_buf = rohc_buf_init_empty(BPTR(&work), ps_max);
 
         /* compress the packet */
-        rohc_status = rohc_compress4(compctx->wu.rohc.compressor, uncomp_buf, &comp_buf);
+        rohc_status = rohc_compress4(compctx->wu.rohc.compressor,
+                                     uncomp_buf, &comp_buf);
         switch (rohc_status)
         {
-        case ROHC_STATUS_OK:
-            compressed = true;
-            break;
+            case ROHC_STATUS_OK:
+                ASSERT(buf_inc_len(&work, comp_buf.len));
 
-        case ROHC_STATUS_SEGMENT:
-            dmsg(D_COMP, "Skip multiple segments created by ROHC compression");
-            compressed = false;
-            break;
+                dmsg(D_COMP, "ROHC compress %d -> %d", BLEN(buf), BLEN(&work));
+                compctx->pre_compress += BLEN(buf);
+                compctx->post_compress += BLEN(&work);
 
-        case ROHC_STATUS_OUTPUT_TOO_SMALL:
-            dmsg(D_COMP_ERRORS, "ROHC compression error: too large result");
-            buf->len = 0;
-            return;
+                head_byte = ROHC_COMPRESS_BYTE;
+                break;
 
-        case ROHC_STATUS_ERROR:
-        default:
-            dmsg(D_COMP_ERRORS, "ROHC compression error");
-            buf->len = 0;
-            return;
+            case ROHC_STATUS_SEGMENT:
+                dmsg(D_COMP, "Skip multiple segments created by ROHC compression");
+
+                /* copy uncompressed data */
+                ASSERT(buf_copy(&work, buf));
+                break;
+
+            case ROHC_STATUS_OUTPUT_TOO_SMALL:
+                dmsg(D_COMP_ERRORS, "ROHC compression error: too large result");
+                buf_reset_len(buf);
+                return;
+
+            case ROHC_STATUS_ERROR:
+            default:
+                dmsg(D_COMP_ERRORS, "ROHC compression error");
+                buf_reset_len(buf);
+                return;
         }
 
-        ASSERT(buf_safe(&work, comp_buf.len));
-        work.len = comp_buf.len;
+        *buf = work;
+    }
 
-        dmsg(D_COMP, "ROHC compress %d -> %d", buf->len, work.len);
-        compctx->pre_compress += buf->len;
-        compctx->post_compress += work.len;
+nocomp:
+    /* store compression status */
+    {
+        uint8_t *head = BPTR(buf);
 
-        /* store compression status */
-        {
-            uint8_t *head = BPTR(buf);
-            uint8_t *tail = BEND(buf);
-            ASSERT(buf_safe(buf, 1));
-            ++buf->len;
-
-            /* move head byte of payload to tail */
-            *tail = *head;
-            *head = (compressed ? ROHC_COMPRESS_BYTE : NO_COMPRESS_BYTE_SWAP);
-        }
+        /* move head byte of payload to tail */
+        ASSERT(buf_write_u8(buf, *head));
+        *head = head_byte;
     }
 }
 
@@ -202,74 +225,81 @@ rohc_decompress(struct buffer *buf,
     const size_t max_decomp_size = EXPANDED_SIZE(frame);
     uint8_t c;
 
-    if (buf->len <= 0)
+    if (BLEN(buf) <= 0)
     {
         return;
     }
-
-    ASSERT(buf_init(&work, FRAME_HEADROOM(frame)));
 
     /* do unframing/swap (assumes buf->len > 0) */
     {
         uint8_t *head = BPTR(buf);
         c = *head;
-        --buf->len;
-        *head = *BEND(buf);
+        *head = *BLAST(buf);
+        ASSERT(buf_inc_len(buf, -1));
     }
 
     if (c == ROHC_COMPRESS_BYTE) /* packet was compressed */
     {
-        rohc_status_t rohc_status;
+        ASSERT(buf_init(&work, FRAME_HEADROOM(frame)));
+
+        /* copy pre-IP data (i.e. Ethernet header) */
+        if (compctx->wu.rohc.tunnel_type == DEV_TYPE_TAP)
+        {
+            ASSERT(buf_copy_n(&work, buf, sizeof(struct openvpn_ethhdr)));
+        }
 
         ASSERT(buf_safe(&work, max_decomp_size));
 
-        /* prepare buffers for ROHC */
-        struct rohc_buf comp_buf = rohc_buf_init_full(BPTR(buf), BLEN(buf), 0);
-        struct rohc_buf uncomp_buf = rohc_buf_init_empty(BPTR(&work), max_decomp_size);
-
-        /* compress the packet */
-        rohc_status = rohc_decompress3(compctx->wu.rohc.decompressor,
-                                       comp_buf, &uncomp_buf, NULL, NULL);
-        switch (rohc_status)
         {
-        case ROHC_STATUS_OK:
-            break;
+            rohc_status_t rohc_status;
 
-        case ROHC_STATUS_NO_CONTEXT:
-            dmsg(D_COMP_ERRORS, "ROHC decompression error: no decompression "
-                                "context was found for the ROHC packet");
-            break;
+            /* prepare buffers for ROHC */
+            struct rohc_buf comp_buf = rohc_buf_init_full(BPTR(buf), BLEN(buf), 0);
+            struct rohc_buf uncomp_buf = rohc_buf_init_empty(BPTR(&work), max_decomp_size);
 
-        case ROHC_STATUS_OUTPUT_TOO_SMALL:
-            dmsg(D_COMP_ERRORS, "ROHC decompression error: too large result");
-            break;
+            /* compress the packet */
+            rohc_status = rohc_decompress3(compctx->wu.rohc.decompressor,
+                                           comp_buf, &uncomp_buf, NULL, NULL);
+            switch (rohc_status)
+            {
+                case ROHC_STATUS_OK:
+                    break;
 
-        case ROHC_STATUS_MALFORMED:
-            dmsg(D_COMP_ERRORS, "ROHC decompression error: malformed packet");
-            break;
+                case ROHC_STATUS_NO_CONTEXT:
+                    dmsg(D_COMP_ERRORS, "ROHC decompression error: no decompression "
+                                        "context was found for the ROHC packet");
+                    break;
 
-        case ROHC_STATUS_BAD_CRC:
-            dmsg(D_COMP_ERRORS, "ROHC decompression error: bad CRC");
-            break;
+                case ROHC_STATUS_OUTPUT_TOO_SMALL:
+                    dmsg(D_COMP_ERRORS, "ROHC decompression error: too large result");
+                    break;
 
-        case ROHC_STATUS_ERROR:
-        default:
-            dmsg(D_COMP_ERRORS, "ROHC decompression error");
-            break;
+                case ROHC_STATUS_MALFORMED:
+                    dmsg(D_COMP_ERRORS, "ROHC decompression error: malformed packet");
+                    break;
+
+                case ROHC_STATUS_BAD_CRC:
+                    dmsg(D_COMP_ERRORS, "ROHC decompression error: bad CRC");
+                    break;
+
+                case ROHC_STATUS_ERROR:
+                default:
+                    dmsg(D_COMP_ERRORS, "ROHC decompression error");
+                    break;
+            }
+
+            if (rohc_status != ROHC_STATUS_OK)
+            {
+                buf_reset_len(buf);
+                return;
+            }
+
+            ASSERT(buf_inc_len(&work, uncomp_buf.len));
         }
 
-        if (rohc_status != ROHC_STATUS_OK)
-        {
-            buf->len = 0;
-            return;
-        }
-
-        ASSERT(buf_safe(&work, uncomp_buf.len));
-        work.len = uncomp_buf.len;
-
-        dmsg(D_COMP, "ROHC decompress %d -> %d", buf->len, work.len);
-        compctx->pre_decompress += buf->len;
-        compctx->post_decompress += work.len;
+        dmsg(D_COMP, "ROHC decompress %d -> %d", BLEN(buf), BLEN(&work));
+        compctx->pre_decompress += BLEN(buf);
+        compctx->post_decompress += BLEN(&work);
 
         *buf = work;
     }
@@ -279,7 +309,7 @@ rohc_decompress(struct buffer *buf,
     else
     {
         dmsg(D_COMP_ERRORS, "Bad ROHC decompression header byte: %d", (int)c);
-        buf->len = 0;
+        buf_reset_len(buf);
     }
 }
 

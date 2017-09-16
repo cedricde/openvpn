@@ -44,14 +44,14 @@
 #include "memdbg.h"
 
 static void
-lz4_compress_init(struct compress_context *compctx)
+lz4_compress_init(struct compress_context *compctx, int tunnel_type)
 {
     msg(D_INIT_MEDIUM, "LZ4 compression initializing");
     ASSERT(compctx->flags & COMP_F_SWAP);
 }
 
 static void
-lz4v2_compress_init(struct compress_context *compctx)
+lz4v2_compress_init(struct compress_context *compctx, int tunnel_type)
 {
     msg(D_INIT_MEDIUM, "LZ4v2 compression initializing");
 }
