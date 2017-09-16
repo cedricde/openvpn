@@ -4143,7 +4143,7 @@ show_library_versions(const unsigned int flags)
 #define ROHC_LIB_VER_STR "", ""
 #endif
 
-    msg(flags, "library versions: %s%s%s%s", SSL_LIB_VER_STR, LZO_LIB_VER_STR, ROHC_LIB_VER_STR);
+    msg(flags, "library versions: %s%s%s%s%s", SSL_LIB_VER_STR, LZO_LIB_VER_STR, ROHC_LIB_VER_STR);
 
 #undef SSL_LIB_VER_STR
 #undef LZO_LIB_VER_STR
