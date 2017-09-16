@@ -185,21 +185,25 @@ rohc_compress(struct buffer *buf,
 
             case ROHC_STATUS_SEGMENT:
                 dmsg(D_COMP, "Skip multiple segments created by ROHC compression");
-
-                /* copy uncompressed data */
-                ASSERT(buf_copy(&work, buf));
                 break;
 
             case ROHC_STATUS_OUTPUT_TOO_SMALL:
                 dmsg(D_COMP_ERRORS, "ROHC compression error: too large result");
-                buf_reset_len(buf);
-                return;
+                break;
 
             case ROHC_STATUS_ERROR:
-            default:
                 dmsg(D_COMP_ERRORS, "ROHC compression error");
-                buf_reset_len(buf);
-                return;
+                break;
+
+            default:
+                dmsg(D_COMP_ERRORS, "ROHC compression unknown error: %d", (int)rohc_status);
+                break;
+        }
+
+        if (rohc_status != ROHC_STATUS_OK)
+        {
+            /* copy uncompressed data */
+            ASSERT(buf_copy(&work, buf));
         }
 
         *buf = work;
