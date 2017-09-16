@@ -97,6 +97,11 @@ rohc_compress_init(struct compress_context *compctx, int tunnel_type)
         msg(M_FATAL, "Cannot enable ROHC profiles");
     }
 
+    if (!rohc_comp_set_mrru(compctx->wu.rohc.compressor, 0))
+    {
+        msg(M_FATAL, "Cannot disable ROHC segmentation");
+    }
+
 
     /* prepare the decompressor */
     compctx->wu.rohc.decompressor = rohc_decomp_new2(cid_type, max_cid, ROHC_U_MODE);
