@@ -44,14 +44,14 @@
 #include "memdbg.h"
 
 static void
-lz4_compress_init(struct compress_context *compctx, int tunnel_type)
+lz4_compress_init(struct compress_context *compctx)
 {
     msg(D_INIT_MEDIUM, "LZ4 compression initializing");
     ASSERT(compctx->flags & COMP_F_SWAP);
 }
 
 static void
-lz4v2_compress_init(struct compress_context *compctx, int tunnel_type)
+lz4v2_compress_init(struct compress_context *compctx)
 {
     msg(D_INIT_MEDIUM, "LZ4v2 compression initializing");
 }
@@ -111,7 +111,7 @@ do_lz4_compress(struct buffer *buf,
 static void
 lz4_compress(struct buffer *buf, struct buffer work,
              struct compress_context *compctx,
-             const struct frame *frame)
+             const struct frame *frame, int tunnel_type)
 {
     bool compressed;
     if (buf->len <= 0)
@@ -153,7 +153,7 @@ lz4_compress(struct buffer *buf, struct buffer work,
 static void
 lz4v2_compress(struct buffer *buf, struct buffer work,
                struct compress_context *compctx,
-               const struct frame *frame)
+               const struct frame *frame, int tunnel_type)
 {
     bool compressed;
     if (buf->len <= 0)
@@ -214,7 +214,7 @@ do_lz4_decompress(size_t zlen_max,
 static void
 lz4_decompress(struct buffer *buf, struct buffer work,
                struct compress_context *compctx,
-               const struct frame *frame)
+               const struct frame *frame, int tunnel_type)
 {
     size_t zlen_max = EXPANDED_SIZE(frame);
     uint8_t c;          /* flag indicating whether or not our peer compressed */
@@ -251,7 +251,7 @@ lz4_decompress(struct buffer *buf, struct buffer work,
 static void
 lz4v2_decompress(struct buffer *buf, struct buffer work,
                  struct compress_context *compctx,
-                 const struct frame *frame)
+                 const struct frame *frame, int tunnel_type)
 {
     size_t zlen_max = EXPANDED_SIZE(frame);
     uint8_t c;          /* flag indicating whether or not our peer compressed */

@@ -38,7 +38,7 @@
 #include "memdbg.h"
 
 struct compress_context *
-comp_init(const struct compress_options *opt, int tunnel_type)
+comp_init(const struct compress_options *opt)
 {
     struct compress_context *compctx = NULL;
     switch (opt->alg)
@@ -87,7 +87,7 @@ comp_init(const struct compress_options *opt, int tunnel_type)
     }
     if (compctx)
     {
-        (*compctx->alg.compress_init)(compctx, tunnel_type);
+        (*compctx->alg.compress_init)(compctx);
     }
 
     return compctx;

@@ -98,7 +98,7 @@ lzo_adaptive_compress_data(struct lzo_adaptive_compress *ac, int n_total, int n_
 }
 
 static void
-lzo_compress_init(struct compress_context *compctx, int tunnel_type)
+lzo_compress_init(struct compress_context *compctx)
 {
     msg(D_INIT_MEDIUM, "LZO compression initializing");
     ASSERT(!(compctx->flags & COMP_F_SWAP));
@@ -141,7 +141,7 @@ lzo_compression_enabled(struct compress_context *compctx)
 static void
 lzo_compress(struct buffer *buf, struct buffer work,
              struct compress_context *compctx,
-             const struct frame *frame)
+             const struct frame *frame, int tunnel_type)
 {
     lzo_uint zlen = 0;
     int err;
@@ -209,7 +209,7 @@ lzo_compress(struct buffer *buf, struct buffer work,
 static void
 lzo_decompress(struct buffer *buf, struct buffer work,
                struct compress_context *compctx,
-               const struct frame *frame)
+               const struct frame *frame, int tunnel_type)
 {
     lzo_uint zlen = EXPANDED_SIZE(frame);
     int err;

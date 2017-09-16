@@ -40,7 +40,6 @@ struct rohc_workspace
 {
     struct rohc_comp *compressor;
     struct rohc_decomp *decompressor;
-    int tunnel_type;
 };
 
 #endif /* ENABLE_ROHC */

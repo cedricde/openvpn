@@ -2182,7 +2182,7 @@ do_deferred_options(struct context *c, const unsigned int found)
     {
         msg(D_PUSH, "OPTIONS IMPORT: compression parms modified");
         comp_uninit(c->c2.comp_context);
-        c->c2.comp_context = comp_init(&c->options.comp, TUNNEL_TYPE(c->c1.tuntap));
+        c->c2.comp_context = comp_init(&c->options.comp);
     }
 #endif
 
@@ -4127,7 +4127,7 @@ init_instance(struct context *c, const struct env_set *env, const unsigned int f
     /* initialize compression library. */
     if (comp_enabled(&options->comp) && (c->mode == CM_P2P || child))
     {
-        c->c2.comp_context = comp_init(&options->comp, TUNNEL_TYPE(c->c1.tuntap));
+        c->c2.comp_context = comp_init(&options->comp);
     }
 #endif
 

@@ -38,7 +38,7 @@
 #include "memdbg.h"
 
 static void
-stub_compress_init(struct compress_context *compctx, int tunnel_type)
+stub_compress_init(struct compress_context *compctx)
 {
 }
 
@@ -50,7 +50,7 @@ stub_compress_uninit(struct compress_context *compctx)
 static void
 stub_compress(struct buffer *buf, struct buffer work,
               struct compress_context *compctx,
-              const struct frame *frame)
+              const struct frame *frame, int tunnel_type)
 {
     if (buf->len <= 0)
     {
@@ -77,7 +77,7 @@ stub_compress(struct buffer *buf, struct buffer work,
 static void
 stub_decompress(struct buffer *buf, struct buffer work,
                 struct compress_context *compctx,
-                const struct frame *frame)
+                const struct frame *frame, int tunnel_type)
 {
     uint8_t c;
     if (buf->len <= 0)
@@ -112,7 +112,7 @@ stub_decompress(struct buffer *buf, struct buffer work,
 static void
 stubv2_compress(struct buffer *buf, struct buffer work,
                 struct compress_context *compctx,
-                const struct frame *frame)
+                const struct frame *frame, int tunnel_type)
 {
     if (buf->len <= 0)
     {
@@ -125,7 +125,7 @@ stubv2_compress(struct buffer *buf, struct buffer work,
 static void
 stubv2_decompress(struct buffer *buf, struct buffer work,
                   struct compress_context *compctx,
-                  const struct frame *frame)
+                  const struct frame *frame, int tunnel_type)
 {
     if (buf->len <= 0)
     {

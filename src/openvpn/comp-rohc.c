@@ -45,6 +45,19 @@
 #include <rohc/rohc_decomp.h>
 
 
+static const rohc_profile_t ROHC_PROFILES[] = {
+    ROHC_PROFILE_UNCOMPRESSED,
+    ROHC_PROFILE_RTP,
+    ROHC_PROFILE_UDP,
+    ROHC_PROFILE_ESP,
+    ROHC_PROFILE_IP,
+    ROHC_PROFILE_RTP_LLA,
+    ROHC_PROFILE_TCP,
+    ROHC_PROFILE_UDPLITE_RTP,
+    ROHC_PROFILE_UDPLITE,
+    -1
+};
+
 static int
 rohc_random_cb(const struct rohc_comp *const comp,
                void *const user_context)
@@ -52,9 +65,48 @@ rohc_random_cb(const struct rohc_comp *const comp,
     return get_random();
 }
 
-static void
-rohc_compress_init(struct compress_context *compctx, int tunnel_type)
+#ifdef ENABLE_DEBUG
+static void rohc_msg_cb(void *const priv_ctxt,
+                        const rohc_trace_level_t level,
+                        const rohc_trace_entity_t entity,
+                        const int profile,
+                        const char *const format, ...)
 {
+    va_list arglist;
+    int flags;
+
+    switch (level)
+    {
+        case ROHC_TRACE_ERROR:
+            flags = LOGLEV(6, 5, M_DEBUG);
+            break;
+        case ROHC_TRACE_WARNING:
+            flags = LOGLEV(7, 10, M_DEBUG);
+            break;
+        case ROHC_TRACE_INFO:
+            flags = LOGLEV(8, 20, M_DEBUG);
+            break;
+        case ROHC_TRACE_DEBUG:
+            flags = LOGLEV(9, 50, M_DEBUG);
+            break;
+        default:
+            flags = LOGLEV(11, 70, M_DEBUG);
+            break;
+    }
+
+    va_start(arglist, format);
+    if (msg_test(flags))
+    {
+        x_msg_va(flags, format, arglist);
+    }
+    va_end(arglist);
+}
+#endif
+
+static void
+rohc_compress_init(struct compress_context *compctx)
+{
+    const rohc_profile_t *profile;
     rohc_cid_type_t cid_type;
     rohc_cid_t max_cid;
 
@@ -82,26 +134,29 @@ rohc_compress_init(struct compress_context *compctx, int tunnel_type)
         msg(M_FATAL, "Cannot initialize ROHC compressor");
     }
 
-    if (!rohc_comp_enable_profiles(compctx->wu.rohc.compressor,
-                                   ROHC_PROFILE_UNCOMPRESSED,
-                                   ROHC_PROFILE_RTP,
-                                   ROHC_PROFILE_UDP,
-                                   ROHC_PROFILE_ESP,
-                                   ROHC_PROFILE_IP,
-                                   ROHC_PROFILE_RTP_LLA,
-                                   ROHC_PROFILE_TCP,
-                                   ROHC_PROFILE_UDPLITE_RTP,
-                                   ROHC_PROFILE_UDPLITE,
-                                   -1))
+    for (profile = ROHC_PROFILES; *profile != -1; profile++)
     {
-        msg(M_FATAL, "Cannot enable ROHC profiles");
+        if (!rohc_comp_enable_profile(compctx->wu.rohc.compressor, *profile))
+        {
+            msg(M_WARN, "Cannot enable ROHC compress profile %s", rohc_get_profile_descr(*profile));
+        }
+        else
+        {
+            dmsg(D_COMP, "ROHC compress profile %s enabled", rohc_get_profile_descr(*profile));
+        }
     }
 
     if (!rohc_comp_set_mrru(compctx->wu.rohc.compressor, 0))
     {
-        msg(M_FATAL, "Cannot disable ROHC segmentation");
+        msg(M_WARN, "Cannot disable ROHC segmentation");
     }
 
+#ifdef ENABLE_DEBUG
+    if (!rohc_comp_set_traces_cb2(compctx->wu.rohc.compressor, rohc_msg_cb, NULL))
+    {
+        msg(M_WARN, "Cannot set ROHC compressor log callback");
+    }
+#endif
 
     /* prepare the decompressor */
     compctx->wu.rohc.decompressor = rohc_decomp_new2(cid_type, max_cid, ROHC_U_MODE);
@@ -110,8 +165,24 @@ rohc_compress_init(struct compress_context *compctx, int tunnel_type)
         msg(M_FATAL, "Cannot initialize ROHC decompressor");
     }
 
-    /* store type of tunnel */
-    compctx->wu.rohc.tunnel_type = tunnel_type;
+    for (profile = ROHC_PROFILES; *profile != -1; profile++)
+    {
+        if (!rohc_decomp_enable_profile(compctx->wu.rohc.decompressor, *profile))
+        {
+            msg(M_WARN, "Cannot enable ROHC decompress profile %s", rohc_get_profile_descr(*profile));
+        }
+        else
+        {
+            dmsg(D_COMP, "ROHC decompress profile %s enabled", rohc_get_profile_descr(*profile));
+        }
+    }
+
+#ifdef ENABLE_DEBUG
+    if (!rohc_decomp_set_traces_cb2(compctx->wu.rohc.decompressor, rohc_msg_cb, NULL))
+    {
+        msg(M_WARN, "Cannot set ROHC decompressor log callback");
+    }
+#endif
 }
 
 static void
@@ -125,10 +196,9 @@ rohc_compress_uninit(struct compress_context *compctx)
 }
 
 static void
-rohc_compress(struct buffer *buf,
-              struct buffer work,
+rohc_compress(struct buffer *buf, struct buffer work,
               struct compress_context *compctx,
-              const struct frame *frame)
+              const struct frame *frame, int tunnel_type)
 {
     const size_t ps = PAYLOAD_SIZE(frame);
     const size_t ps_max = ps + COMP_EXTRA_BUFFER(ps);
@@ -147,7 +217,7 @@ rohc_compress(struct buffer *buf,
     }
 
     /* check if the frame can be ROHC compressed */
-    switch (get_tun_ip_ver(compctx->wu.rohc.tunnel_type, buf, &iphdr_offset))
+    switch (get_tun_ip_ver(tunnel_type, buf, &iphdr_offset))
     {
         case 4:
         case 6:
@@ -226,10 +296,9 @@ nocomp:
 }
 
 static void
-rohc_decompress(struct buffer *buf,
-                struct buffer work,
+rohc_decompress(struct buffer *buf, struct buffer work,
                 struct compress_context *compctx,
-                const struct frame *frame)
+                const struct frame *frame, int tunnel_type)
 {
     const size_t max_decomp_size = EXPANDED_SIZE(frame);
     uint8_t c;
@@ -252,7 +321,7 @@ rohc_decompress(struct buffer *buf,
         ASSERT(buf_init(&work, FRAME_HEADROOM(frame)));
 
         /* copy pre-IP data (i.e. Ethernet header) */
-        if (compctx->wu.rohc.tunnel_type == DEV_TYPE_TAP)
+        if (tunnel_type == DEV_TYPE_TAP)
         {
             ASSERT(buf_copy_n(&work, buf, sizeof(struct openvpn_ethhdr)));
         }
@@ -272,6 +341,13 @@ rohc_decompress(struct buffer *buf,
             switch (rohc_status)
             {
                 case ROHC_STATUS_OK:
+                    /* if ROHC segment or feedback-only packet */
+                    if (rohc_buf_is_empty(uncomp_buf))
+                    {
+                        dmsg(D_COMP, "ROHC decompressed no IP packet");
+                        buf_reset_len(buf);
+                        return;
+                    }
                     break;
 
                 case ROHC_STATUS_NO_CONTEXT:
