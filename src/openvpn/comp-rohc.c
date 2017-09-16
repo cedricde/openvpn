@@ -59,7 +59,7 @@ rohc_compress_init(struct compress_context *compctx, int tunnel_type)
     rohc_cid_t max_cid;
 
     msg(D_INIT_MEDIUM, "ROHC compression initializing");
-    ASSERT(!(compctx->flags & COMP_F_SWAP));
+    ASSERT(compctx->flags & COMP_F_SWAP);
 
     CLEAR(compctx->wu.rohc);
 
