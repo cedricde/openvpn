@@ -143,8 +143,12 @@ build_rohc () {
         (
             cd "rohc-${ROHC_VERSION}"
 
-            ./configure --host=${CHOST} --program-prefix='' \
-                --libdir=${PREFIX}/lib --prefix=${PREFIX} --build=x86_64-pc-linux-gnu
+            if [ ! -z ${CHOST+x} ]; then
+                ./configure --host=${CHOST} --prefix=${PREFIX} --libdir=${PREFIX}/lib
+            else
+                ./configure --prefix=${PREFIX} --libdir=${PREFIX}/lib
+            fi
+
             make all install
         )
         echo "${ROHC_VERSION}" > "${PREFIX}/.rohc-version"
