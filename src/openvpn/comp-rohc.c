@@ -202,8 +202,7 @@ rohc_compress(struct buffer *buf, struct buffer work,
               const struct frame *frame, int tunnel_type)
 {
     const size_t ps = PAYLOAD_SIZE(frame);
-    const size_t ps_max = ps + COMP_EXTRA_BUFFER(ps);
-    int iphdr_offset;
+    int iphdr_offset = 0;
     uint8_t head_byte = NO_COMPRESS_BYTE_SWAP;
 
     if (BLEN(buf) <= 0)
@@ -229,12 +228,13 @@ rohc_compress(struct buffer *buf, struct buffer work,
     }
 
     ASSERT(buf_init(&work, FRAME_HEADROOM(frame)));
-    ASSERT(buf_safe(&work, ps_max));
+    ASSERT(buf_safe(&work, ps + COMP_EXTRA_BUFFER(ps)));
 
     /* copy pre-IP data (i.e. Ethernet header) */
     if (iphdr_offset > 0)
     {
         ASSERT(buf_copy_n(&work, buf, iphdr_offset));
+        ASSERT(buf_advance(&work, iphdr_offset));
     }
 
     {
@@ -242,7 +242,7 @@ rohc_compress(struct buffer *buf, struct buffer work,
 
         /* prepare buffers for ROHC */
         struct rohc_buf uncomp_buf = rohc_buf_init_full(BPTR(buf), BLEN(buf), 0);
-        struct rohc_buf comp_buf = rohc_buf_init_empty(BPTR(&work), ps_max);
+        struct rohc_buf comp_buf = rohc_buf_init_empty(BPTR(&work), BCAP(&work));
 
         /* compress the packet */
         rohc_status = rohc_compress4(compctx->wu.rohc.compressor,
@@ -256,7 +256,15 @@ rohc_compress(struct buffer *buf, struct buffer work,
                 compctx->pre_compress += BLEN(buf);
                 compctx->post_compress += BLEN(&work);
 
+                /* return to start of pre-IP data */
+                if (iphdr_offset > 0)
+                {
+                    ASSERT(buf_prepend(&work, iphdr_offset));
+                }
+
                 head_byte = ROHC_COMPRESS_BYTE;
+
+                *buf = work;
                 break;
 
             case ROHC_STATUS_SEGMENT:
@@ -276,13 +284,11 @@ rohc_compress(struct buffer *buf, struct buffer work,
                 break;
         }
 
-        if (rohc_status != ROHC_STATUS_OK)
+        /* use uncompressed data on failure */
+        if (rohc_status != ROHC_STATUS_OK && iphdr_offset > 0)
         {
-            /* copy uncompressed data */
-            ASSERT(buf_copy(&work, buf));
+            ASSERT(buf_prepend(buf, iphdr_offset));
         }
-
-        *buf = work;
     }
 
 nocomp:
@@ -301,7 +307,6 @@ rohc_decompress(struct buffer *buf, struct buffer work,
                 struct compress_context *compctx,
                 const struct frame *frame, int tunnel_type)
 {
-    const size_t max_decomp_size = EXPANDED_SIZE(frame);
     uint8_t c;
 
     if (BLEN(buf) <= 0)
@@ -320,21 +325,21 @@ rohc_decompress(struct buffer *buf, struct buffer work,
     if (c == ROHC_COMPRESS_BYTE) /* packet was compressed */
     {
         ASSERT(buf_init(&work, FRAME_HEADROOM(frame)));
+        ASSERT(buf_safe(&work, EXPANDED_SIZE(frame)));
 
         /* copy pre-IP data (i.e. Ethernet header) */
         if (tunnel_type == DEV_TYPE_TAP)
         {
             ASSERT(buf_copy_n(&work, buf, sizeof(struct openvpn_ethhdr)));
+            ASSERT(buf_advance(&work, sizeof(struct openvpn_ethhdr)));
         }
-
-        ASSERT(buf_safe(&work, max_decomp_size));
 
         {
             rohc_status_t rohc_status;
 
             /* prepare buffers for ROHC */
             struct rohc_buf comp_buf = rohc_buf_init_full(BPTR(buf), BLEN(buf), 0);
-            struct rohc_buf uncomp_buf = rohc_buf_init_empty(BPTR(&work), max_decomp_size);
+            struct rohc_buf uncomp_buf = rohc_buf_init_empty(BPTR(&work), BCAP(&work));
 
             /* compress the packet */
             rohc_status = rohc_decompress3(compctx->wu.rohc.decompressor,
@@ -386,6 +391,12 @@ rohc_decompress(struct buffer *buf, struct buffer work,
         dmsg(D_COMP, "ROHC decompress %d -> %d", BLEN(buf), BLEN(&work));
         compctx->pre_decompress += BLEN(buf);
         compctx->post_decompress += BLEN(&work);
+
+        /* return to start of pre-IP data */
+        if (tunnel_type == DEV_TYPE_TAP)
+        {
+            ASSERT(buf_prepend(&work, sizeof(struct openvpn_ethhdr)));
+        }
 
         *buf = work;
     }
