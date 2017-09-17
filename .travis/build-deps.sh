@@ -141,7 +141,7 @@ build_rohc () {
     if [ "$(cat ${PREFIX}/.rohc-version)" != "${ROHC_VERSION}" ]; then
         tar Jxf download-cache/rohc-${ROHC_VERSION}.tar.xz
         (
-            cd "rohc-${LZO_VERSION}"
+            cd "rohc-${ROHC_VERSION}"
 
             ./configure --host=${CHOST} --program-prefix='' \
                 --libdir=${PREFIX}/lib --prefix=${PREFIX} --build=x86_64-pc-linux-gnu
