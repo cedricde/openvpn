@@ -133,7 +133,7 @@ build_openssl () {
 download_rohc () {
     if [ ! -f "download-cache/rohc-${ROHC_VERSION}.tar.xz" ]; then
         wget -P download-cache/ \
-            "https://rohc-lib.org/download/rohc-${ROHC_VERSION/%.[0-9]*/.x}/${ROHC_VERSION}/rohc-${ROHC_VERSION}.tar.xz"
+            "https://rohc-lib.org/download/rohc-${ROHC_VERSION%.*}.x/${ROHC_VERSION}/rohc-${ROHC_VERSION}.tar.xz"
     fi
 }
 
