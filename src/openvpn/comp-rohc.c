@@ -38,6 +38,8 @@
 #include "misc.h"
 #include "basic.h"
 #include "proto.h"
+#include "ping.h"
+#include "occ.h"
 
 #include "memdbg.h"
 
@@ -79,16 +81,16 @@ static void rohc_msg_cb(void *const priv_ctxt,
     switch (level)
     {
         case ROHC_TRACE_ERROR:
-            flags = LOGLEV(6, 5, M_DEBUG);
+            flags = LOGLEV(4, 5, M_DEBUG);
             break;
         case ROHC_TRACE_WARNING:
-            flags = LOGLEV(7, 10, M_DEBUG);
+            flags = LOGLEV(5, 10, M_DEBUG);
             break;
         case ROHC_TRACE_INFO:
-            flags = LOGLEV(8, 20, M_DEBUG);
+            flags = LOGLEV(6, 20, M_DEBUG);
             break;
         case ROHC_TRACE_DEBUG:
-            flags = LOGLEV(9, 50, M_DEBUG);
+            flags = LOGLEV(7, 50, M_DEBUG);
             break;
         default:
             flags = LOGLEV(11, 70, M_DEBUG);
@@ -214,6 +216,17 @@ rohc_compress(struct buffer *buf, struct buffer work,
         dmsg(D_COMP_ERRORS, "ROHC compression buffer overflow");
         buf_reset_len(buf);
         return;
+    }
+
+    /* check if the packet is an internal one */
+    if (is_ping_msg(buf)
+#ifdef ENABLE_OCC
+        || is_occ_msg(buf)
+#endif
+       )
+    {
+        /* skip compression for non-IP packets */
+        goto nocomp;
     }
 
     /* check if the frame can be ROHC compressed */
@@ -357,8 +370,8 @@ rohc_decompress(struct buffer *buf, struct buffer work,
                     break;
 
                 case ROHC_STATUS_NO_CONTEXT:
-                    dmsg(D_COMP_ERRORS, "ROHC decompression error: no decompression "
-                                        "context was found for the ROHC packet");
+                    dmsg(D_COMP, "ROHC decompression error: no decompression "
+                                 "context was found for the ROHC packet");
                     break;
 
                 case ROHC_STATUS_OUTPUT_TOO_SMALL:
