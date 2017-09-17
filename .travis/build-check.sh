@@ -11,8 +11,6 @@ fi
 
 autoreconf -vi
 
-export ROHC_CFLAGS="-I${PREFIX}/include"
-export ROHC_LIBS="-L${PREFIX}/lib -lrohc"
 if [ -z ${CHOST+x} ]; then
 	./configure --with-crypto-library="${SSLLIB}" ${EXTRA_CONFIG:-} || (cat config.log && exit 1)
 	make -j$JOBS
