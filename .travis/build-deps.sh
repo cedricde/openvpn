@@ -130,6 +130,27 @@ build_openssl () {
     fi
 }
 
+download_rohc () {
+    if [ ! -f "download-cache/rohc-${ROHC_VERSION}.tar.xz" ]; then
+        wget -P download-cache/ \
+            "https://rohc-lib.org/download/rohc-${ROHC_VERSION/%.[0-9]*/.x}/${ROHC_VERSION}/rohc-${ROHC_VERSION}.tar.xz"
+    fi
+}
+
+build_rohc () {
+    if [ "$(cat ${PREFIX}/.rohc-version)" != "${ROHC_VERSION}" ]; then
+        tar Jxf download-cache/rohc-${ROHC_VERSION}.tar.xz
+        (
+            cd "rohc-${LZO_VERSION}"
+
+            ./configure --host=${CHOST} --program-prefix='' \
+                --libdir=${PREFIX}/lib --prefix=${PREFIX} --build=x86_64-pc-linux-gnu
+            make all install
+        )
+        echo "${ROHC_VERSION}" > "${PREFIX}/.rohc-version"
+    fi
+}
+
 # Enable ccache
 if [ "${TRAVIS_OS_NAME}" != "osx" ] && [ -z ${CHOST+x} ]; then
     # ccache not available on osx, see:
@@ -173,3 +194,7 @@ if [ ! -z ${CHOST+x} ]; then
       download_pkcs11_helper
       build_pkcs11_helper
 fi
+
+# Download and build ROHC lib
+download_rohc
+build_rohc

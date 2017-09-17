@@ -25,6 +25,8 @@ else
 	export LZO_LIBS="-L${PREFIX}/lib -llzo2"
 	export PKCS11_HELPER_LIBS="-L${PREFIX}/lib -lpkcs11-helper"
 	export PKCS11_HELPER_CFLAGS="-I${PREFIX}/include"
+	export ROHC_CFLAGS="-I${PREFIX}/include"
+	export ROHC_LIBS="-L${PREFIX}/lib -lrohc"
 	./configure --with-crypto-library="${SSLLIB}" --host=${CHOST} --build=x86_64-pc-linux-gnu --enable-pkcs11 --disable-plugins || (cat config.log && exit 1)
 	make -j${JOBS}
 fi
