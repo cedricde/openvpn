@@ -30,7 +30,6 @@
 
 #include <rohc/rohc.h>
 
-#include "buffer.h"
 
 /* ROHC specific compression flags */
 #define COMP_F_ROHC_MANY_STREAMS (1<<4) /* handle more than 15 streams */

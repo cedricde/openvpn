@@ -33,13 +33,14 @@
 
 #if defined(ENABLE_ROHC)
 
+#include "basic.h"
+#include "buffer.h"
 #include "comp.h"
 #include "error.h"
 #include "misc.h"
-#include "basic.h"
-#include "proto.h"
-#include "ping.h"
 #include "occ.h"
+#include "ping.h"
+#include "proto.h"
 
 #include "memdbg.h"
 
