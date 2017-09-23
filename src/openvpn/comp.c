@@ -82,7 +82,6 @@ comp_init(const struct compress_options *opt)
             compctx->flags = opt->flags;
             compctx->alg = rohc_alg;
             break;
-
 #endif
     }
     if (compctx)
