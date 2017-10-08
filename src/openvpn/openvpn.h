@@ -46,6 +46,7 @@
 #include "plugin.h"
 #include "manage.h"
 #include "pf.h"
+#include "rohc.h"
 
 /*
  * Our global key schedules, packaged thusly
@@ -105,6 +106,10 @@ struct context_buffers
 #ifdef USE_COMP
     struct buffer compress_buf;
     struct buffer decompress_buf;
+#endif
+#ifdef ENABLE_ROHC
+    struct buffer rohc_compress_buf;
+    struct buffer rohc_decompress_buf;
 #endif
 
     /*
@@ -374,6 +379,13 @@ struct context_2
     /**< Compression context used by the
      *   \link compression Data Channel
      *   Compression module\endlink. */
+#endif
+
+#ifdef ENABLE_ROHC
+    struct rohc_context *rohc_context;
+    /**< Compression context used by the
+     *   \link compression Data Channel
+     *   ROHC Compression module\endlink. */
 #endif
 
     /*

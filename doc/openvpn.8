@@ -2547,6 +2547,17 @@ the compression efficiency will be very low, triggering openvpn to disable
 compression for a period of time until the next re\-sample test.
 .\"*********************************************************
 .TP
+.B \-\-rohc [n]
+Enable ROHC compression with at most
+.B n
+contexts.
+.B n
+shall be a value between 1 and 16384, "small" (equivalent to 16) or
+"large" (default, equivalent to 16384).
+
+This option can be used in conjuction with other compression algorithms.
+.\"*********************************************************
+.TP
 .B \-\-management IP port [pw\-file]
 Enable a TCP server on
 .B IP:port

@@ -27,6 +27,7 @@ AM_CFLAGS = \
 	$(OPTIONAL_CRYPTO_CFLAGS) \
 	$(OPTIONAL_LZO_CFLAGS) \
 	$(OPTIONAL_LZ4_CFLAGS) \
+	$(OPTIONAL_ROHC_CFLAGS) \
 	$(OPTIONAL_PKCS11_HELPER_CFLAGS) \
 	-DPLUGIN_LIBDIR=\"${plugindir}\"
 
@@ -100,6 +101,7 @@ openvpn_SOURCES = \
 	push.c push.h \
 	pushlist.h \
 	reliable.c reliable.h \
+	rohc.c rohc.h \
 	route.c route.h \
 	schedule.c schedule.h \
 	session_id.c session_id.h \
@@ -125,6 +127,7 @@ openvpn_LDADD = \
 	$(SOCKETS_LIBS) \
 	$(OPTIONAL_LZO_LIBS) \
 	$(OPTIONAL_LZ4_LIBS) \
+	$(OPTIONAL_ROHC_LIBS) \
 	$(OPTIONAL_PKCS11_HELPER_LIBS) \
 	$(OPTIONAL_CRYPTO_LIBS) \
 	$(OPTIONAL_SELINUX_LIBS) \

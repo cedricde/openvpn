@@ -57,6 +57,7 @@
 #include "forward.h"
 #include "ssl_verify.h"
 #include "platform.h"
+#include "rohc.h"
 #include <ctype.h>
 
 #include "memdbg.h"
@@ -87,6 +88,9 @@ const char title_string[] =
     " [COMP_STUB]"
 #endif
 #endif /* USE_COMP */
+#ifdef ENABLE_ROHC
+    " [ROHC]"
+#endif
 #if EPOLL
     " [EPOLL]"
 #endif
@@ -358,6 +362,11 @@ static const char usage_message[] =
     "--comp-noadapt  : Don't use adaptive compression when --comp-lzo\n"
     "                  is specified.\n"
 #endif
+#endif
+#ifdef ENABLE_ROHC
+    "--rohc [n]      : Enable Robust Header Compression with up to n contexts\n"
+    "                  n is a numeric value between 1 and 16384, 'small'\n"
+    "                  (eq. 16) or 'large' (eq. 16384, default).\n"
 #endif
 #ifdef ENABLE_MANAGEMENT
     "--management ip port [pass] : Enable a TCP server on ip:port to handle\n"
@@ -1654,6 +1663,10 @@ show_settings(const struct options *o)
 #ifdef USE_COMP
     SHOW_INT(comp.alg);
     SHOW_INT(comp.flags);
+#endif
+
+#ifdef ENABLE_ROHC
+    SHOW_INT(rohc.max_contexts);
 #endif
 
     SHOW_STR(route_script);
@@ -3499,6 +3512,7 @@ calc_options_string_link_mtu(const struct options *o, const struct frame *frame)
  *
  * --comp-lzo
  * --compress alg
+ * --rohc
  * --fragment
  *
  * Crypto Options:
@@ -3588,6 +3602,13 @@ options_string(const struct options *o,
     if (o->comp.alg != COMP_ALG_UNDEF)
     {
         buf_printf(&out, ",comp-lzo"); /* for compatibility, this simply indicates that compression context is active, not necessarily LZO per-se */
+    }
+#endif
+
+#ifdef ENABLE_ROHC
+    if (o->rohc.max_contexts > 0)
+    {
+        buf_printf(&out, ",rohc %u", o->rohc.max_contexts);
     }
 #endif
 
@@ -4134,11 +4155,17 @@ show_library_versions(const unsigned int flags)
 #else
 #define LZO_LIB_VER_STR "", ""
 #endif
+#ifdef ENABLE_ROHC
+#define ROHC_LIB_VER_STR ", ROHC ", rohc_version()
+#else
+#define ROHC_LIB_VER_STR "", ""
+#endif
 
-    msg(flags, "library versions: %s%s%s", SSL_LIB_VER_STR, LZO_LIB_VER_STR);
+    msg(flags, "library versions: %s%s%s%s%s", SSL_LIB_VER_STR, LZO_LIB_VER_STR, ROHC_LIB_VER_STR);
 
 #undef SSL_LIB_VER_STR
 #undef LZO_LIB_VER_STR
+#undef ROHC_LIB_VER_STR
 }
 
 static void
@@ -7431,6 +7458,38 @@ add_option(struct options *options,
         }
     }
 #endif /* USE_COMP */
+#ifdef ENABLE_ROHC
+    else if (streq(p[0], "rohc") && !p[2])
+    {
+        VERIFY_PERMISSION(OPT_P_COMP);
+
+        if (p[1])
+        {
+            if (streq(p[1], "small"))
+            {
+                options->rohc.max_contexts = ROHC_MAX_CONTEXTS_SMALL;
+            }
+            else if (streq(p[1], "large"))
+            {
+                options->rohc.max_contexts = ROHC_MAX_CONTEXTS_LARGE;
+            }
+            else
+            {
+                options->rohc.max_contexts = positive_atoi(p[1]);
+                if (options->rohc.max_contexts < 1
+                    || options->rohc.max_contexts > ROHC_MAX_CONTEXTS_LARGE)
+                {
+                    msg(msglevel, "--rohc max number of contexts must be between 1 and 16384");
+                    goto err;
+                }
+            }
+        }
+        else
+        {
+            options->rohc.max_contexts = ROHC_MAX_CONTEXTS_LARGE;
+        }
+    }
+#endif /* ENABLE_ROHC */
 #ifdef ENABLE_CRYPTO
     else if (streq(p[0], "show-ciphers") && !p[1])
     {

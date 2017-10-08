@@ -228,6 +228,9 @@
     <ClCompile Include="tls_crypt.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="rohc.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="base64.h">
@@ -486,6 +489,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="tls_crypt.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="rohc.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

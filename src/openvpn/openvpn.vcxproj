@@ -155,6 +155,7 @@
     <ClCompile Include="ps.c" />
     <ClCompile Include="push.c" />
     <ClCompile Include="reliable.c" />
+    <ClCompile Include="rohc.c" />
     <ClCompile Include="route.c" />
     <ClCompile Include="schedule.c" />
     <ClCompile Include="session_id.c" />
@@ -239,6 +240,7 @@
     <ClInclude Include="push.h" />
     <ClInclude Include="pushlist.h" />
     <ClInclude Include="reliable.h" />
+    <ClInclude Include="rohc.h" />
     <ClInclude Include="route.h" />
     <ClInclude Include="schedule.h" />
     <ClInclude Include="session_id.h" />

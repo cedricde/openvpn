@@ -308,6 +308,12 @@ print_status(const struct context *c, struct status_output *so)
         comp_print_stats(c->c2.comp_context, so);
     }
 #endif
+#ifdef ENABLE_ROHC
+    if (c->c2.rohc_context)
+    {
+        rohc_print_stats(c->c2.rohc_context, so);
+    }
+#endif
 #ifdef PACKET_TRUNCATION_CHECK
     status_printf(so, "TUN read truncations," counter_format, c->c2.n_trunc_tun_read);
     status_printf(so, "TUN write truncations," counter_format, c->c2.n_trunc_tun_write);

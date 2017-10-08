@@ -2277,6 +2277,9 @@ push_peer_info(struct buffer *buf, struct tls_session *session)
 #ifdef USE_COMP
         comp_generate_peer_info_string(&session->opt->comp_options, &out);
 #endif
+#ifdef ENABLE_ROHC
+        rohc_generate_peer_info_string(&session->opt->rohc_options, &out);
+#endif
 
         if (session->opt->push_peer_info_detail >= 2)
         {

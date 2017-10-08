@@ -314,6 +314,9 @@ struct tls_options
 #ifdef USE_COMP
     struct compress_options comp_options;
 #endif
+#ifdef ENABLE_ROHC
+    struct rohc_options rohc_options;
+#endif
 
     /* configuration file SSL-related boolean and low-permutation options */
 #define SSLF_CLIENT_CERT_NOT_REQUIRED (1<<0)

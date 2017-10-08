@@ -39,6 +39,7 @@
 #include "manage.h"
 #include "proxy.h"
 #include "comp.h"
+#include "rohc.h"
 #include "pushlist.h"
 #include "clinat.h"
 #ifdef ENABLE_CRYPTO
@@ -317,6 +318,10 @@ struct options
 
 #ifdef USE_COMP
     struct compress_options comp;
+#endif
+
+#ifdef ENABLE_ROHC
+    struct rohc_options rohc;
 #endif
 
     /* buffer sizes */

@@ -2186,6 +2186,15 @@ do_deferred_options(struct context *c, const unsigned int found)
     }
 #endif
 
+#ifdef ENABLE_ROHC
+    if (found & OPT_P_COMP)
+    {
+        msg(D_PUSH, "OPTIONS IMPORT: ROHC compression parms modified");
+        rohc_uninit(c->c2.rohc_context);
+        c->c2.rohc_context = rohc_init(&c->options.rohc);
+    }
+#endif
+
     if (found & OPT_P_SHAPER)
     {
         msg(D_PUSH, "OPTIONS IMPORT: traffic shaper enabled");
@@ -2777,6 +2786,10 @@ do_init_crypto_tls(struct context *c, const unsigned int flags)
     to.comp_options = options->comp;
 #endif
 
+#ifdef ENABLE_ROHC
+    to.rohc_options = options->rohc;
+#endif
+
 #if defined(ENABLE_CRYPTO_OPENSSL) && OPENSSL_VERSION_NUMBER >= 0x10001000
     if (options->keying_material_exporter_label)
     {
@@ -3159,6 +3172,11 @@ init_context_buffers(const struct frame *frame)
     b->decompress_buf = alloc_buf(BUF_SIZE(frame));
 #endif
 
+#ifdef ENABLE_ROHC
+    b->rohc_compress_buf = alloc_buf(BUF_SIZE(frame));
+    b->rohc_decompress_buf = alloc_buf(BUF_SIZE(frame));
+#endif
+
     return b;
 }
 
@@ -3174,6 +3192,11 @@ free_context_buffers(struct context_buffers *b)
 #ifdef USE_COMP
         free_buf(&b->compress_buf);
         free_buf(&b->decompress_buf);
+#endif
+
+#ifdef ENABLE_ROHC
+        free_buf(&b->rohc_compress_buf);
+        free_buf(&b->rohc_decompress_buf);
 #endif
 
 #ifdef ENABLE_CRYPTO
@@ -4131,6 +4154,14 @@ init_instance(struct context *c, const struct env_set *env, const unsigned int f
     }
 #endif
 
+#ifdef ENABLE_ROHC
+    /* initialize ROHC library */
+    if (rohc_enabled(&options->rohc) && (c->mode == CM_P2P || child))
+    {
+        c->c2.rohc_context = rohc_init(&options->rohc);
+    }
+#endif
+
     /* initialize MTU variables */
     do_init_frame(c);
 
@@ -4280,6 +4311,14 @@ close_instance(struct context *c)
         {
             comp_uninit(c->c2.comp_context);
             c->c2.comp_context = NULL;
+        }
+#endif
+
+#ifdef ENABLE_ROHC
+        if (c->c2.rohc_context)
+        {
+            rohc_uninit(c->c2.rohc_context);
+            c->c2.rohc_context = NULL;
         }
 #endif
 
@@ -4464,6 +4503,9 @@ inherit_context_top(struct context *dest,
 
 #ifdef USE_COMP
     dest->c2.comp_context = NULL;
+#endif
+#ifdef ENABLE_ROHC
+    dest->c2.rohc_context = NULL;
 #endif
 }
 

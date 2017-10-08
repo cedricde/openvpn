@@ -470,6 +470,13 @@ encrypt_sign(struct context *c, bool comp_frag)
 
     if (comp_frag)
     {
+#ifdef ENABLE_ROHC
+        /* Compress the packet with ROHC */
+        if (c->c2.rohc_context)
+        {
+            rohc_compress(&c->c2.buf, b->rohc_compress_buf, c->c2.rohc_context, &c->c2.frame, TUNNEL_TYPE(c->c1.tuntap));
+        }
+#endif
 #ifdef USE_COMP
         /* Compress the packet. */
         if (c->c2.comp_context)
@@ -939,6 +946,13 @@ process_incoming_link_part2(struct context *c, struct link_socket_info *lsi, con
         if (c->c2.comp_context)
         {
             (*c->c2.comp_context->alg.decompress)(&c->c2.buf, c->c2.buffers->decompress_buf, c->c2.comp_context, &c->c2.frame);
+        }
+#endif
+
+#ifdef ENABLE_ROHC
+        if (c->c2.rohc_context)
+        {
+            rohc_decompress(&c->c2.buf, c->c2.buffers->rohc_decompress_buf, c->c2.rohc_context, &c->c2.frame, TUNNEL_TYPE(c->c1.tuntap));
         }
 #endif
 
